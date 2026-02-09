@@ -1,0 +1,17 @@
+{
+  "name": "nostr-watch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nostr data crawler and analysis platform",
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "dev:server": "pnpm --filter @nostr-watch/server run dev",
+    "dev:web": "pnpm --filter @nostr-watch/web run dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
