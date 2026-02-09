@@ -17,6 +17,8 @@ nostr-watch/
 
 ### Design Overview
 
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS nostr_watch CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
 **Data Flow:**
 
 ```
@@ -262,3 +264,4 @@ The following keywords are seeded on first startup:
 
 ## License
 MIT
+

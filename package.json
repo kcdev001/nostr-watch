@@ -8,6 +8,8 @@
     "dev:server": "pnpm --filter @nostr-watch/server run dev",
     "dev:web": "pnpm --filter @nostr-watch/web run dev",
     "build": "pnpm -r run build",
+    "start:server": "pnpm --filter @nostr-watch/server run start:bg",
+    "stop:server": "pnpm --filter @nostr-watch/server run stop",
     "lint": "pnpm -r run lint"
   },
   "engines": {
