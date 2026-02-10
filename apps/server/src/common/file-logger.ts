@@ -10,7 +10,7 @@ export class FileLogger extends ConsoleLogger {
   private logStream: fs.WriteStream | null = null;
 
   constructor(context?: string) {
-    super(context);
+    super(context || 'FileLogger');
     this.initLogFile();
   }
 
@@ -30,9 +30,10 @@ export class FileLogger extends ConsoleLogger {
   private writeToFile(level: string, message: any, ...args: any[]) {
     if (!this.logStream) return;
     const timestamp = new Date().toISOString();
-    const ctx = args.length > 0 && typeof args[args.length - 1] === 'string'
-      ? args[args.length - 1]
-      : this.context || '';
+    const ctx =
+      args.length > 0 && typeof args[args.length - 1] === 'string'
+        ? args[args.length - 1]
+        : this.context || '';
     const line = `${timestamp} [${level.toUpperCase()}] [${ctx}] ${message}\n`;
     this.logStream.write(line);
 
@@ -40,7 +41,11 @@ export class FileLogger extends ConsoleLogger {
     for (const arg of args) {
       if (arg instanceof Error && arg.stack) {
         this.logStream.write(`${arg.stack}\n`);
-      } else if (typeof arg === 'object' && arg !== null && !(typeof arg === 'string')) {
+      } else if (
+        typeof arg === 'object' &&
+        arg !== null &&
+        !(typeof arg === 'string')
+      ) {
         try {
           this.logStream.write(`${JSON.stringify(arg)}\n`);
         } catch {
