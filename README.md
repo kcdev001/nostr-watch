@@ -8,7 +8,7 @@ Nostr data crawler and analysis platform. Tracks keywords, trending posts, and i
 nostr-watch/
 ├── apps/
 │   ├── server/          # NestJS backend (port 3100)
-│   └── web/             # Nuxt 3 frontend (port 3000, WIP)
+│   └── web/             # Nuxt 3 frontend (port 3000)
 ├── packages/
 │   └── shared/          # Shared TypeScript types
 ├── .env                 # Environment config
@@ -73,11 +73,12 @@ mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS nostr_watch CHARACTER SET utf
 
 # Configure .env (already provided)
 # ORM_HOST, ORM_PORT, ORM_USERNAME, ORM_PASSWORD, ORM_DATABASE
+# ADMIN_SECRET_KEY - secret key for admin access to keywords management
 
 # Start backend
 pnpm dev:server
 
-# Start frontend (WIP)
+# Start frontend
 pnpm dev:web
 
 # Start both
@@ -139,16 +140,16 @@ Full-text search in event content.
 
 Example: `GET /api/events/search?q=lightning+network&limit=10`
 
-#### `GET /api/events/keyword/:keyword`
-Get events matching a specific keyword.
+#### `GET /api/events/group/:group`
+Get events matching a keyword group. A group aggregates multiple keywords (e.g. "Bitcoin" group includes both "BTC" and "Bitcoin" keywords).
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `keyword` | path, string | - | Keyword to filter by (e.g. `BTC`) |
+| `group` | path, string | - | Group name to filter by (e.g. `Bitcoin`) |
 | `page` | query, int | 1 | Page number |
 | `limit` | query, int | 20 | Items per page |
 
-Example: `GET /api/events/keyword/BTC?page=1&limit=10`
+Example: `GET /api/events/group/Bitcoin?page=1&limit=10`
 
 #### `GET /api/events/:id`
 Get a single event by Nostr event ID.
@@ -175,15 +176,31 @@ List all tracked keywords.
 Response:
 ```json
 [
-  { "id": 1, "keyword": "BTC", "isActive": true, "createdAt": "..." },
-  { "id": 2, "keyword": "Bitcoin", "isActive": true, "createdAt": "..." }
+  { "id": 1, "keyword": "BTC", "groupName": "Bitcoin", "isActive": true, "createdAt": "..." },
+  { "id": 2, "keyword": "Bitcoin", "groupName": "Bitcoin", "isActive": true, "createdAt": "..." },
+  { "id": 3, "keyword": "Keychat", "groupName": null, "isActive": true, "createdAt": "..." }
+]
+```
+
+#### `GET /api/keywords/groups`
+List active keyword groups (used for tab display). Keywords with the same `groupName` are merged; keywords without a group use their keyword as the group name.
+
+Response:
+```json
+[
+  { "name": "Bitcoin", "keywords": ["BTC", "Bitcoin"] },
+  { "name": "Keychat", "keywords": ["Keychat"] },
+  { "name": "Signal", "keywords": ["Signal"] },
+  { "name": "Damus", "keywords": ["Damus"] }
 ]
 ```
 
 #### `POST /api/keywords`
 Add a new keyword to track.
 
-Body: `{ "keyword": "Ethereum" }`
+Body: `{ "keyword": "Ethereum", "groupName": "Ethereum" }`
+
+The `groupName` field is optional. Keywords with the same `groupName` are displayed as a single tab on the Events page.
 
 #### `PATCH /api/keywords/:id/toggle`
 Toggle a keyword active/inactive.
@@ -210,26 +227,6 @@ Get trending events for a specific keyword.
 | `period` | query, string | `day` | `day` or `week` |
 | `limit` | query, int | 20 | Max results |
 
-#### `GET /api/trending/authors`
-Get most active authors ranked by event count and total reactions.
-
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `period` | query, string | `week` | `day` or `week` |
-| `limit` | query, int | 20 | Max results |
-
-Response:
-```json
-[
-  {
-    "pubkey": "abc123...",
-    "eventCount": 15,
-    "totalReactions": 230,
-    "profile": { "name": "satoshi", "displayName": "Satoshi", "picture": "..." }
-  }
-]
-```
-
 ### Nostr Crawler
 
 #### `GET /api/nostr/status`
@@ -247,17 +244,34 @@ Response:
 #### `POST /api/nostr/restart`
 Restart the crawler (reconnect to relays, refresh keyword subscriptions).
 
+### Auth
+
+#### `POST /api/auth/verify`
+Verify admin secret key for keywords management access.
+
+Body: `{ "secretKey": "your-admin-key" }`
+
+Response (200): `{ "ok": true }`
+Response (401): `{ "message": "Invalid secret key" }`
+
+The admin key is configured via `ADMIN_SECRET_KEY` in `.env`.
+
 ## Default Keywords
-The following keywords are seeded on first startup:
-- BTC
-- Bitcoin
-- Keychat
-- Signal
-- Damus
+The following keywords are seeded on first startup (with grouping):
+
+| Keyword | Group |
+|---------|-------|
+| BTC | Bitcoin |
+| Bitcoin | Bitcoin |
+| Keychat | - |
+| Signal | - |
+| Damus | - |
+
+Keywords in the same group (e.g. BTC + Bitcoin → "Bitcoin") are merged into a single tab on the Events page.
 
 ## Tech Stack
 - **Backend**: NestJS 10 + TypeORM + MariaDB
-- **Frontend**: Nuxt 3 + Nuxt UI (WIP)
+- **Frontend**: Nuxt 3 + Nuxt UI
 - **Nostr**: nostr-tools v2 (SimplePool)
 - **Monorepo**: pnpm workspaces
 - **Real-time**: Frontend connects to Nostr relays directly via nostr-tools (native WebSocket)

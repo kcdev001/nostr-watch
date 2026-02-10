@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "nuxi dev --port 3000",
     "build": "nuxi build",
-    "preview": "nuxi preview"
+    "preview": "nuxi preview",
+    "start:prod": "node .output/server/index.mjs",
+    "start:bg": "mkdir -p ../../logs && nohup node .output/server/index.mjs >> ../../logs/web.log 2>&1 & echo $! > ../../.web.pid && echo \"Web started (PID: $(cat ../../.web.pid)), log: logs/web.log\"",
+    "stop": "if [ -f ../../.web.pid ] && kill -0 $(cat ../../.web.pid) 2>/dev/null; then kill $(cat ../../.web.pid) && rm -f ../../.web.pid && echo 'Web stopped'; else rm -f ../../.web.pid && echo 'Web not running'; fi"
   },
   "dependencies": {
     "nuxt": "^3.14.0",

@@ -19,9 +19,17 @@ export class KeywordsController {
     return this.keywordsService.findAll();
   }
 
+  @Get('groups')
+  findActiveGroups() {
+    return this.keywordsService.findActiveGroups();
+  }
+
   @Post()
-  create(@Body('keyword') keyword: string) {
-    return this.keywordsService.create(keyword);
+  create(
+    @Body('keyword') keyword: string,
+    @Body('groupName') groupName?: string,
+  ) {
+    return this.keywordsService.create(keyword, groupName);
   }
 
   @Patch(':id/toggle')

@@ -6,6 +6,7 @@ import { NostrModule } from './modules/nostr/nostr.module';
 import { EventsModule } from './modules/events/events.module';
 import { KeywordsModule } from './modules/keywords/keywords.module';
 import { TrendingModule } from './modules/trending/trending.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { TrendingModule } from './modules/trending/trending.module';
     EventsModule,
     KeywordsModule,
     TrendingModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

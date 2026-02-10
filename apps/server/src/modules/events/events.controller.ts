@@ -6,14 +6,19 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
+import { KeywordsService } from '../keywords/keywords.service';
 
 const MAX_LIMIT = 100;
 
 @Controller('events')
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly keywordsService: KeywordsService,
+  ) {}
 
   @Get()
   findRecent(
@@ -40,13 +45,17 @@ export class EventsController {
     return this.eventsService.search(query.trim(), page, Math.min(limit, MAX_LIMIT));
   }
 
-  @Get('keyword/:keyword')
-  findByKeyword(
-    @Param('keyword') keyword: string,
+  @Get('group/:group')
+  async findByGroup(
+    @Param('group') group: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.eventsService.findByKeyword(keyword, page, Math.min(limit, MAX_LIMIT));
+    const keywords = await this.keywordsService.findKeywordsByGroup(group);
+    if (keywords.length === 0) {
+      throw new NotFoundException(`No keywords found for group "${group}"`);
+    }
+    return this.eventsService.findByKeywords(keywords, page, Math.min(limit, MAX_LIMIT));
   }
 
   @Get(':id')

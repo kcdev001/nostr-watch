@@ -16,6 +16,9 @@ export class Keyword {
   @Column({ type: 'varchar', length: 100, unique: true })
   keyword: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'group_name' })
+  groupName: string | null;
+
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive: boolean;
 

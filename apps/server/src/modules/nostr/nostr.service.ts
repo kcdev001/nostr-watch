@@ -468,6 +468,60 @@ export class NostrService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Crawling stopped');
   }
 
+  async fetchReplies(eventId: string): Promise<any[]> {
+    if (!this.pool) return [];
+    try {
+      const events = await this.querySyncWithTimeout({
+        kinds: [1],
+        '#e': [eventId],
+        limit: 50,
+      });
+
+      // Fetch profiles for reply authors
+      const pubkeys = [...new Set(events.map((e: any) => e.pubkey))];
+      const profiles: any[] = [];
+      if (pubkeys.length > 0) {
+        try {
+          const profileEvents = await this.querySyncWithTimeout({
+            kinds: [0],
+            authors: pubkeys,
+          });
+          for (const pe of profileEvents) {
+            try {
+              const meta = JSON.parse(pe.content);
+              profiles.push({
+                pubkey: pe.pubkey,
+                name: meta.name || null,
+                displayName: meta.display_name || null,
+                picture: meta.picture || null,
+                nip05: meta.nip05 || null,
+              });
+            } catch {
+              // Skip invalid profile
+            }
+          }
+        } catch {
+          // Profile fetch failed, continue without profiles
+        }
+      }
+
+      const profileMap = new Map(profiles.map((p) => [p.pubkey, p]));
+
+      return events
+        .map((e: any) => ({
+          id: e.id,
+          pubkey: e.pubkey,
+          content: e.content,
+          createdAt: e.created_at,
+          author: profileMap.get(e.pubkey) || null,
+        }))
+        .sort((a: any, b: any) => a.createdAt - b.createdAt);
+    } catch (error) {
+      this.logger.warn(`Failed to fetch replies for ${eventId}: ${error}`);
+      return [];
+    }
+  }
+
   getStatus() {
     return {
       isRunning: this.isRunning,

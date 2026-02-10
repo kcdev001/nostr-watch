@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Post, Param } from '@nestjs/common';
 import { NostrService } from './nostr.service';
 
 @Controller('nostr')
@@ -8,6 +8,11 @@ export class NostrController {
   @Get('status')
   getStatus() {
     return this.nostrService.getStatus();
+  }
+
+  @Get('replies/:eventId')
+  getReplies(@Param('eventId') eventId: string) {
+    return this.nostrService.fetchReplies(eventId);
   }
 
   @Post('restart')

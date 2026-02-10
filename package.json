@@ -8,8 +8,16 @@
     "dev:server": "pnpm --filter @nostr-watch/server run dev",
     "dev:web": "pnpm --filter @nostr-watch/web run dev",
     "build": "pnpm -r run build",
+    "start": "pnpm run start:server && pnpm run start:web",
     "start:server": "pnpm --filter @nostr-watch/server run start:bg",
+    "start:web": "pnpm --filter @nostr-watch/web run start:bg",
+    "stop": "pnpm run stop:server; pnpm run stop:web",
     "stop:server": "pnpm --filter @nostr-watch/server run stop",
+    "stop:web": "pnpm --filter @nostr-watch/web run stop",
+    "restart": "pnpm run stop && pnpm run start",
+    "logs": "tail -f logs/server.log logs/web.log",
+    "logs:server": "tail -f logs/server.log",
+    "logs:web": "tail -f logs/web.log",
     "lint": "pnpm -r run lint"
   },
   "engines": {

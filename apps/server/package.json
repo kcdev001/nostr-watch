@@ -8,8 +8,8 @@
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main",
-    "start:bg": "nest build && mkdir -p ../../logs && nohup node dist/main > ../../logs/server.log 2>&1 & echo $! > ../../.server.pid && echo \"Server started (PID: $(cat ../../.server.pid)), log: logs/server.log\"",
-    "stop": "kill $(cat ../../.server.pid) 2>/dev/null && rm -f ../../.server.pid && echo 'Server stopped' || echo 'Server not running'"
+    "start:bg": "nest build && mkdir -p ../../logs && nohup node dist/main >> ../../logs/server.log 2>&1 & echo $! > ../../.server.pid && echo \"Server started (PID: $(cat ../../.server.pid)), log: logs/server.log\"",
+    "stop": "if [ -f ../../.server.pid ] && kill -0 $(cat ../../.server.pid) 2>/dev/null; then kill $(cat ../../.server.pid) && rm -f ../../.server.pid && echo 'Server stopped'; else rm -f ../../.server.pid && echo 'Server not running'; fi"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",

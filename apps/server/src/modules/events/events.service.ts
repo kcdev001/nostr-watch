@@ -13,8 +13,8 @@ export class EventsService {
     private readonly profileRepo: Repository<NostrProfile>,
   ) {}
 
-  async findByKeyword(
-    keyword: string,
+  async findByKeywords(
+    keywords: string[],
     page = 1,
     limit = 20,
   ) {
@@ -23,7 +23,7 @@ export class EventsService {
     const qb = this.eventRepo
       .createQueryBuilder('event')
       .innerJoin('event.keywords', 'keyword')
-      .where('keyword.keyword = :keyword', { keyword })
+      .where('keyword.keyword IN (:...keywords)', { keywords })
       .orderBy('event.createdAt', 'DESC')
       .skip(skip)
       .take(limit);
