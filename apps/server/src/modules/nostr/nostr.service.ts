@@ -468,14 +468,46 @@ export class NostrService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Crawling stopped');
   }
 
+  /**
+   * Filter direct replies per NIP-10: check e tag markers to find
+   * events that directly reply to the target event (not just mention it).
+   */
+  private isDirectReply(event: any, targetEventId: string): boolean {
+    const eTags = (event.tags || []).filter((t: string[]) => t[0] === 'e');
+    if (eTags.length === 0) return false;
+
+    // Modern marked tags (NIP-10)
+    const replyTag = eTags.find((t: string[]) => t[3] === 'reply');
+    const rootTag = eTags.find((t: string[]) => t[3] === 'root');
+
+    if (replyTag) {
+      // Nested reply: the "reply" marker points to the direct parent
+      return replyTag[1] === targetEventId;
+    }
+    if (rootTag && eTags.length === 1) {
+      // Top-level reply: only "root" marker, pointing to the original post
+      return rootTag[1] === targetEventId;
+    }
+
+    // Deprecated positional scheme fallback:
+    // Last e tag is the reply target
+    if (eTags.length === 1) return eTags[0][1] === targetEventId;
+    if (eTags.length >= 2) return eTags[eTags.length - 1][1] === targetEventId;
+
+    return false;
+  }
+
   async fetchReplies(eventId: string): Promise<any[]> {
     if (!this.pool) return [];
     try {
-      const events = await this.querySyncWithTimeout({
+      const allEvents = await this.querySyncWithTimeout({
         kinds: [1],
         '#e': [eventId],
-        limit: 50,
+        limit: 100,
       });
+
+      // Filter to only direct replies using NIP-10 rules
+      const events = allEvents.filter((e: any) => this.isDirectReply(e, eventId));
 
       // Fetch profiles for reply authors
       const pubkeys = [...new Set(events.map((e: any) => e.pubkey))];

@@ -8,12 +8,35 @@ export interface ParsedContent {
   videos: string[]
 }
 
+/**
+ * Decode HTML entities that may have been applied by the backend sanitizer.
+ */
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/&amp;/g, '&')
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export function parseEventContent(raw: string): ParsedContent {
+  // Decode any backend HTML escaping first so we work with plain text
+  const plain = decodeHtmlEntities(raw)
+
   const images: string[] = []
   const videos: string[] = []
 
-  // Find all URLs in content
-  const urls = raw.match(URL_REGEX) || []
+  // Find all URLs in plain text content
+  const urls = plain.match(URL_REGEX) || []
   for (const url of urls) {
     if (IMAGE_EXTENSIONS.test(url)) {
       images.push(url)
@@ -22,18 +45,22 @@ export function parseEventContent(raw: string): ParsedContent {
     }
   }
 
-  // Convert plain text to HTML: linkify URLs, preserve newlines
-  let html = escapeHtml(raw)
+  // Escape for safe HTML rendering
+  let html = escapeHtml(plain)
 
   // Linkify URLs (but not media URLs we'll render separately)
   const mediaSet = new Set([...images, ...videos])
-  html = html.replace(/https?:\/\/[^\s<>&"']+/g, (match) => {
-    // Decode HTML entities back for comparison
+  html = html.replace(/https?:\/\/[^\s<>&"]+/g, (match) => {
     const decoded = match.replace(/&amp;/g, '&')
     if (mediaSet.has(decoded)) {
       return '' // Remove media URLs from text, they'll render as embeds
     }
     return `<a href="${match}" target="_blank" rel="noopener" class="text-primary-500 hover:underline break-all">${match}</a>`
+  })
+
+  // Convert #hashtags to clickable search links
+  html = html.replace(/#(\w{1,64})/g, (match, tag) => {
+    return `<a href="/?q=%23${tag}" class="text-primary-500 hover:underline">${match}</a>`
   })
 
   // Preserve newlines
@@ -44,12 +71,4 @@ export function parseEventContent(raw: string): ParsedContent {
   html = html.replace(/^(<br>)+|(<br>)+$/g, '')
 
   return { html, images, videos }
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }

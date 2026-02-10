@@ -104,9 +104,23 @@ export class EventsService {
 
     const qb = this.eventRepo
       .createQueryBuilder('event')
-      .leftJoinAndSelect('event.keywords', 'keyword')
-      .where('event.content LIKE :query', { query: `%${query}%` })
-      .orderBy('event.createdAt', 'DESC')
+      .leftJoinAndSelect('event.keywords', 'keyword');
+
+    // If query starts with #, search by Nostr "t" tag (hashtag) + content
+    if (query.startsWith('#') && query.length > 1) {
+      const tag = query.slice(1).toLowerCase();
+      qb.where(
+        '(JSON_CONTAINS(event.tags, :tagJson) OR LOWER(event.content) LIKE :contentQuery)',
+        {
+          tagJson: JSON.stringify(['t', tag]),
+          contentQuery: `%${query.toLowerCase()}%`,
+        },
+      );
+    } else {
+      qb.where('event.content LIKE :query', { query: `%${query}%` });
+    }
+
+    qb.orderBy('event.createdAt', 'DESC')
       .skip(skip)
       .take(limit);
 

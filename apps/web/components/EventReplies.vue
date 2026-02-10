@@ -49,17 +49,18 @@ function replyAuthorName(reply: Reply): string {
 
 <template>
   <div>
-    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+    <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+      <UIcon name="i-heroicons-chat-bubble-oval-left" class="w-4 h-4 text-gray-400" />
       Replies
-      <span v-if="replies.length" class="text-gray-400 font-normal">({{ replies.length }})</span>
+      <span v-if="replies.length" class="text-xs text-gray-400 font-normal">({{ replies.length }})</span>
     </h4>
 
     <!-- Loading -->
-    <div v-if="loading" class="space-y-3">
-      <div v-for="i in 3" :key="i" class="flex items-start gap-2">
-        <USkeleton class="w-6 h-6 rounded-full flex-shrink-0" />
+    <div v-if="loading" class="space-y-4">
+      <div v-for="i in 3" :key="i" class="flex items-start gap-2.5">
+        <USkeleton class="w-7 h-7 rounded-full flex-shrink-0" />
         <div class="flex-1">
-          <USkeleton class="h-3 w-24 mb-1" />
+          <USkeleton class="h-3 w-24 mb-1.5" />
           <USkeleton class="h-3 w-full" />
         </div>
       </div>
@@ -71,29 +72,29 @@ function replyAuthorName(reply: Reply): string {
     </p>
 
     <!-- Reply list -->
-    <div v-else-if="replies.length" class="space-y-4">
+    <div v-else-if="replies.length" class="divide-y divide-gray-100 dark:divide-gray-800">
       <div
         v-for="reply in replies"
         :key="reply.id"
-        class="flex items-start gap-2"
+        class="flex items-start gap-2.5 py-3 first:pt-0 last:pb-0"
       >
         <img
           v-if="reply.author?.picture"
           :src="reply.author.picture"
-          class="w-6 h-6 rounded-full flex-shrink-0 object-cover"
+          class="w-7 h-7 rounded-full flex-shrink-0 object-cover ring-1 ring-gray-200 dark:ring-gray-700"
           @error="($event.target as HTMLImageElement).style.display = 'none'"
         >
-        <div v-else class="w-6 h-6 rounded-full flex-shrink-0 bg-gray-200 dark:bg-gray-700" />
+        <div v-else class="w-7 h-7 rounded-full flex-shrink-0 bg-gray-100 dark:bg-gray-800 ring-1 ring-gray-200 dark:ring-gray-700" />
 
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-0.5">
+          <div class="flex items-baseline gap-2 mb-0.5">
             <span class="text-xs font-medium text-gray-900 dark:text-white truncate">
               {{ replyAuthorName(reply) }}
             </span>
-            <span class="text-xs text-gray-400 flex-shrink-0">{{ timeAgo(reply.createdAt) }}</span>
+            <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{{ timeAgo(reply.createdAt) }}</span>
           </div>
           <div
-            class="text-xs text-gray-600 dark:text-gray-400 break-words"
+            class="event-content text-sm text-gray-600 dark:text-gray-400 leading-relaxed break-words"
             v-html="parseEventContent(reply.content).html"
           />
         </div>
@@ -101,8 +102,9 @@ function replyAuthorName(reply: Reply): string {
     </div>
 
     <!-- Empty -->
-    <p v-else class="text-sm text-gray-400">
-      No replies yet
-    </p>
+    <div v-else class="text-center py-8">
+      <UIcon name="i-heroicons-chat-bubble-left-ellipsis" class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+      <p class="text-sm text-gray-400">No replies yet</p>
+    </div>
   </div>
 </template>

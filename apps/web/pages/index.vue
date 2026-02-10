@@ -12,13 +12,19 @@ onMounted(() => {
 })
 
 // URL-driven state
-const currentPage = computed(() => Number(route.query.page) || 1)
 const currentGroup = computed(() => (route.query.group as string) || '')
-const searchQuery = ref((route.query.q as string) || '')
-const searchInput = ref(searchQuery.value)
+const searchQuery = computed(() => (route.query.q as string) || '')
 
 // Selected event for detail panel
 const selectedEvent = ref<NostrEvent | null>(null)
+
+// Infinite scroll state
+const events = ref<NostrEvent[]>([])
+const page = ref(1)
+const totalPages = ref(1)
+const loading = ref(false)
+const loadingMore = ref(false)
+const hasMore = computed(() => page.value < totalPages.value)
 
 // Determine which API endpoint to call
 const apiPath = computed(() => {
@@ -31,43 +37,57 @@ const apiPath = computed(() => {
   return '/events'
 })
 
-const apiParams = computed(() => {
-  const params: Record<string, string | number> = {
-    page: currentPage.value,
-    limit: 20,
+async function loadEvents(p: number, append = false) {
+  if (append) {
+    loadingMore.value = true
+  } else {
+    loading.value = true
   }
-  if (searchQuery.value) {
-    params.q = searchQuery.value
+
+  try {
+    const params: Record<string, string | number> = { page: p, limit: 20 }
+    if (searchQuery.value) {
+      params.q = searchQuery.value
+    }
+
+    const data = await $api<PaginatedResponse<NostrEvent>>(apiPath.value, { params })
+
+    if (append) {
+      events.value.push(...data.items)
+    } else {
+      events.value = data.items
+    }
+    page.value = data.page
+    totalPages.value = data.pages
+  } catch {
+    // Silently fail
+  } finally {
+    loading.value = false
+    loadingMore.value = false
   }
-  return params
-})
-
-const { data, pending } = useApi<PaginatedResponse<NostrEvent>>(
-  () => apiPath.value,
-  {
-    lazy: true,
-    server: false,
-    params: apiParams,
-    watch: [apiPath, apiParams],
-  },
-)
-
-// Clear selection when data changes (page/group/search)
-watch([apiPath, currentPage], () => {
-  selectedEvent.value = null
-})
-
-function onSearch() {
-  const q = searchInput.value.trim()
-  if (q.length < 2 && q.length > 0) return
-  router.push({ query: { q: q || undefined } })
-  searchQuery.value = q
 }
 
-function clearSearch() {
-  searchInput.value = ''
-  searchQuery.value = ''
-  router.push({ query: { ...route.query, q: undefined, page: undefined } })
+// Reload when any filter changes
+watch([apiPath, searchQuery], () => {
+  page.value = 1
+  selectedEvent.value = null
+  loadEvents(1)
+}, { immediate: true })
+
+function loadMore() {
+  if (loadingMore.value || !hasMore.value) return
+  loadEvents(page.value + 1, true)
+}
+
+// Infinite scroll: detect when user scrolls near bottom
+const listRef = ref<HTMLElement | null>(null)
+
+function onScroll() {
+  const el = listRef.value
+  if (!el || loadingMore.value || !hasMore.value) return
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+    loadMore()
+  }
 }
 
 function selectGroup(group: string) {
@@ -75,13 +95,7 @@ function selectGroup(group: string) {
     router.push({ query: {} })
   } else {
     router.push({ query: { group } })
-    searchInput.value = ''
-    searchQuery.value = ''
   }
-}
-
-function goToPage(page: number) {
-  router.push({ query: { ...route.query, page: page > 1 ? page : undefined } })
 }
 
 function onSelectEvent(event: NostrEvent) {
@@ -103,77 +117,62 @@ provide('activeGroupKeywords', activeGroupKeywords)
 
 <template>
   <div>
-    <!-- Search bar -->
-    <div class="flex gap-2 mb-4">
-      <UInput
-        v-model="searchInput"
-        placeholder="Search events..."
-        icon="i-heroicons-magnifying-glass"
-        size="md"
-        class="flex-1"
-        @keyup.enter="onSearch"
-      />
-      <UButton label="Search" @click="onSearch" />
-      <UButton
-        v-if="searchQuery"
-        icon="i-heroicons-x-mark"
-        variant="ghost"
-        color="gray"
-        @click="clearSearch"
-      />
-    </div>
-
     <!-- Keyword group filter tabs -->
-    <div class="flex flex-wrap gap-2 mb-6">
+    <div class="flex items-center gap-1.5 mb-5 pb-3 border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
       <UButton
         size="xs"
-        :variant="!currentGroup && !searchQuery ? 'solid' : 'ghost'"
+        :variant="!currentGroup && !searchQuery ? 'soft' : 'ghost'"
         :color="!currentGroup && !searchQuery ? 'primary' : 'gray'"
         label="All"
+        class="flex-shrink-0"
         @click="selectGroup('')"
       />
       <UButton
         v-for="g in keywordsStore.groups"
         :key="g.name"
         size="xs"
-        :variant="currentGroup === g.name ? 'solid' : 'ghost'"
+        :variant="currentGroup === g.name ? 'soft' : 'ghost'"
         :color="currentGroup === g.name ? 'primary' : 'gray'"
         :label="g.name"
+        class="flex-shrink-0"
         @click="selectGroup(g.name)"
       />
     </div>
 
     <!-- Search result info -->
-    <p v-if="searchQuery && data" class="text-sm text-gray-500 mb-4">
-      {{ data.total }} results for "{{ searchQuery }}"
+    <p v-if="searchQuery && events.length" class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      Results for "<span class="text-gray-900 dark:text-white font-medium">{{ searchQuery }}</span>"
     </p>
 
     <!-- Split layout: list + detail -->
     <div class="flex gap-6">
-      <!-- Left: Event list -->
-      <div :class="selectedEvent ? 'w-1/2 hidden lg:block' : 'w-full max-w-3xl'">
+      <!-- Left: Event list with infinite scroll -->
+      <div
+        ref="listRef"
+        :class="selectedEvent ? 'hidden lg:block' : ''"
+        class="w-full lg:w-1/2 lg:flex-shrink-0 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto scrollbar-thin"
+        @scroll="onScroll"
+      >
         <EventList
-          :events="data?.items || []"
-          :loading="pending"
+          :events="events"
+          :loading="loading"
           :selected-id="selectedEvent?.id"
           @select="onSelectEvent"
         />
 
-        <!-- Pagination -->
-        <div v-if="data && data.pages > 1" class="flex justify-center mt-6">
-          <UPagination
-            :model-value="currentPage"
-            :page-count="data.limit"
-            :total="data.total"
-            @update:model-value="goToPage"
-          />
+        <!-- Load more indicator -->
+        <div v-if="loadingMore" class="flex justify-center py-4">
+          <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 text-gray-400 animate-spin" />
         </div>
+        <p v-else-if="!hasMore && events.length > 0" class="text-center py-4 text-xs text-gray-400">
+          No more events
+        </p>
       </div>
 
       <!-- Right: Detail panel (desktop) -->
       <div
         v-if="selectedEvent"
-        class="flex-1 min-w-0 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+        class="flex-1 min-w-0 lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto scrollbar-thin"
       >
         <!-- Mobile: back button -->
         <div class="lg:hidden mb-3">
@@ -182,7 +181,7 @@ provide('activeGroupKeywords', activeGroupKeywords)
             variant="ghost"
             color="gray"
             size="sm"
-            label="Back to list"
+            label="Back"
             @click="closeDetail"
           />
         </div>
@@ -198,9 +197,9 @@ provide('activeGroupKeywords', activeGroupKeywords)
           />
         </div>
 
-        <UCard>
-          <EventDetail :event="selectedEvent" />
-        </UCard>
+        <div class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+          <EventReplies :event-id="selectedEvent.id" />
+        </div>
       </div>
     </div>
   </div>

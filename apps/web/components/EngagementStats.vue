@@ -7,17 +7,17 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex items-center gap-4 text-sm text-gray-500">
-    <span class="flex items-center gap-1">
-      <UIcon name="i-heroicons-heart" class="w-4 h-4" />
+  <div class="flex items-center gap-3.5 text-xs text-gray-400 dark:text-gray-500">
+    <span class="flex items-center gap-1 tabular-nums">
+      <UIcon name="i-heroicons-heart" class="w-3.5 h-3.5" />
       {{ reactionCount }}
     </span>
-    <span class="flex items-center gap-1">
-      <UIcon name="i-heroicons-arrow-path-rounded-square" class="w-4 h-4" />
+    <span class="flex items-center gap-1 tabular-nums">
+      <UIcon name="i-heroicons-arrow-path-rounded-square" class="w-3.5 h-3.5" />
       {{ repostCount }}
     </span>
-    <span class="flex items-center gap-1">
-      <UIcon name="i-heroicons-chat-bubble-oval-left" class="w-4 h-4" />
+    <span class="flex items-center gap-1 tabular-nums">
+      <UIcon name="i-heroicons-chat-bubble-oval-left" class="w-3.5 h-3.5" />
       {{ replyCount }}
     </span>
   </div>
